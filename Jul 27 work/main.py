@@ -24,7 +24,7 @@ def madm(t, psi_0, constant, elec1, elec2, amco_list):
     # for the correct electronic pair, calculate that MADM for this time 't'
     MADM = np.outer(np.conj(elec_dict[elec2]), elec_dict[elec1]) * np.array(amco_list)
 
-    return MADM.flatten()
+    return MADM.flatten()   # np.where(np.real(np.round(MADM, 7))==0, np.nan, np.real(np.round(MADM, 7)))
 
 
 def full_matrix_madm_over_time(q, J_0, K, Q, S, elec1, elec2, Kt=Kt,
@@ -48,6 +48,11 @@ def full_matrix_madm_over_time(q, J_0, K, Q, S, elec1, elec2, Kt=Kt,
 
     # get the order of Js and Ks
     reduced_vector_parts = psi_vector_parts[:len(psi_vector_parts) // len(indices_of_good_eigenvalues)]
+
+    for x in reduced_vector_parts:
+        print(x)
+
+
 
     # Gets the time-independent AMCOs
     amco_list = full_amco(J_0, K, Q, S, reduced_vector_parts)
@@ -73,7 +78,7 @@ t_values = np.linspace(start, end, num_steps)
 K = 2
 Q = 0
 S = 0
-J_0 = 0
+J_0 = 1
 
 
 elec1 = "X"
