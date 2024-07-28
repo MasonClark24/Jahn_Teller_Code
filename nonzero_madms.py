@@ -3,7 +3,6 @@ from time import time
 from functions import *
 import itertools
 
-
 """
 To do:
 Gaussian to filter around specific energy
@@ -14,10 +13,10 @@ def nonzero_madm(J_0, J, Jp, k, kp, K, S):
     #valid_Js = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]
 
     #if AMCOs(J, Jp, k, kp, M_0, M_0, K, 0, S) != 0 and a('X', J, J_0, M_0, k) != 0 and a('X', Jp, J_0, M_0, kp) != 0:
-        #print(J_0, J, Jp, k, kp, K, S, "section 1")
+    #print(J_0, J, Jp, k, kp, K, S, "section 1")
 
     #if J not in valid_Js or Jp not in valid_Js:
-        #return False
+    #return False
 
     if (J + Jp + K) % 2 != 0:
         return False
@@ -45,14 +44,16 @@ S = 0
 J_0 = 0
 
 elec1 = "X"
-elec2 = "X"
+elec2 = "Y"
 
 madms = []
+
 
 # Function to generate (J, k) permutations
 def generate_permutations(J_0):
     J_values = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]
     return [(J, k) for J in J_values for k in range(-J, J + 1)]
+
 
 # Generate all (J, k) pairs
 permutations = generate_permutations(J_0)
@@ -66,13 +67,14 @@ permutations_of_perms = [
     if nonzero_madm(J_0, J, Jp, k, kp, 2, 0)
 ]
 
+
 def psi_norm(T2_eigenvectors_in_BO, states, J_0, M_0):
     """
     return normalization constant for psi
     """
 
     # what J values are possible, given J_0
-    J_possibilities = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]    # By wigner rules, J = +- J_0
+    J_possibilities = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]  # By wigner rules, J = +- J_0
 
     psi = []
 
@@ -90,6 +92,7 @@ def psi_norm(T2_eigenvectors_in_BO, states, J_0, M_0):
     psi_0 = np.sum(np.array(psi), axis=0)
 
     return np.sqrt(np.conj(psi_0).dot(psi_0))
+
 
 # Get possible quantum states
 states = get_possible_states(q)
@@ -115,10 +118,13 @@ for nonzero_term in permutations_of_perms:
                  "Y": 1,
                  "Z": 2}
 
-    electronically_seperated = [np.array_split(np.array(v), 3) for v in T2_eigenvectors_in_BO / len(T2_eigenvectors_in_BO)]
+    electronically_seperated = [np.array_split(np.array(v), 3) for v in
+                                T2_eigenvectors_in_BO / len(T2_eigenvectors_in_BO)]
 
-    x = a(elec1, J, J_0, M_0, k) * np.array([vector[elec_dict[elec1]] for vector in electronically_seperated]) / psi_norm
-    xp = a(elec2, Jp, J_0, M_0, kp) * np.array([vector[elec_dict[elec2]] for vector in electronically_seperated]) / psi_norm
+    x = a(elec1, J, J_0, M_0, k) * np.array(
+        [vector[elec_dict[elec1]] for vector in electronically_seperated]) / psi_norm
+    xp = a(elec2, Jp, J_0, M_0, kp) * np.array(
+        [vector[elec_dict[elec2]] for vector in electronically_seperated]) / psi_norm
 
 
     def madm(amco, x, xp, exp_1, exp_2, t):
@@ -130,12 +136,11 @@ for nonzero_term in permutations_of_perms:
 
         return amco * np.outer(np.conj(term2), term1).flatten()
 
+
     results = np.array([madm(amco, x, xp, exp_1, exp_2, t) for t in t_values]).T
 
     for ans in results:
         madms.append(ans)
-
-
 
 print(f"Time to execute: {round(time() - t0, 2)}s for {len(madms)} MADM elements")
 
@@ -144,24 +149,20 @@ imag = np.imag(madms)
 
 
 def plot_fun_stuff(plotting):
-
     # Plot the traced result and the off-diagonal ones separately
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+    fig, (ax1) = plt.subplots(1, 1, figsize=(8, 6))
 
     for i, element in enumerate(plotting):
-        condition = abs(np.min(element) - np.max(element)) > 1e-5
+        condition = abs(np.min(element) - np.max(element)) > 1e-9
         if condition:
             ax1.plot(t_values * time_conversion, element, linewidth=0.5)
 
-
     ax1.set_title(f"{elec1}{elec2} Full MADM K=2 with time, quanta={q}")
     ax1.set_ylabel('Value')
-    ax2.set_xlabel('Time (fs)')
-    ax2.legend()
 
     plt.tight_layout()
     plt.show()
 
 
-# plot_fun_stuff(real)
+plot_fun_stuff(real)
 # plot_fun_stuff(imag)

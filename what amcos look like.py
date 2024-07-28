@@ -42,37 +42,44 @@ J_0 = 8
 elec1 = "X"
 elec2 = "X"
 
-# Generate all (J, k) pairs
-permutations = generate_permutations(J_0)
-
-# Generate all combinations of these pairs taken 2 at a time
-combined_permutations = itertools.product(permutations, repeat=2)
-
-# Filter based on nonzero_madm condition
-permutations_of_perms = [
-    [J, k, Jp, kp] for (J, k), (Jp, kp) in combined_permutations]
-
 full_amcos = []
-for (J, k) in permutations.copy():
-    amco = []
-    for (Jp, kp) in permutations.copy():
-        amco.append(AMCOs(J, Jp, k, kp, M_0, M_0, K, Q, S))
 
-    full_amcos.append(amco)
+for J_0 in range(0, 20):
+    # Generate all (J, k) pairs
+    permutations = generate_permutations(J_0)
 
-# Calculate AMCO list
-print(f"For J_0 = {J_0}")
-x = 0
-y = 0
-for nonzero_term in permutations_of_perms:
-    J, k, Jp, kp = nonzero_term[0], nonzero_term[1], nonzero_term[2], nonzero_term[3]
+    print(f"For J_0 = {J_0}")
 
-    if nonzero_madm(J_0, J, Jp, k, kp, K, S):
-        x += 1
-    y += 1
+    expected_nonzero = 0
+    num_amcos = 0
+    nonzero_amcos = 0
+    full_amcos = []
+    for (J, k) in permutations.copy():
+        amco = []
+        for (Jp, kp) in permutations.copy():
+            M = AMCOs(J, Jp, k, kp, M_0, M_0, K, Q, S)
+            amco.append(M)
 
-print(f"Full number of amcos is {y}")
-print(f"Expected nonzero amount is {x}")
+            if nonzero_madm(J_0, J, Jp, k, kp, K, S):
+                expected_nonzero += 1
+            if M != 0:
+                nonzero_amcos += 1
+
+            num_amcos += 1
+
+        full_amcos.append(amco)
+
+
+
+    print(f"Full number of amcos is {num_amcos}")
+    print(f"Expected nonzero amount is {expected_nonzero}")
+    print(f"Actual nonzero amount is {nonzero_amcos}")
+    print("-------\n")
+
+
+
+
+
 # Convert AMCO list to numpy array for easier manipulation
 amco_array = np.array(full_amcos).T
 amco_array[amco_array == 0] = np.nan
