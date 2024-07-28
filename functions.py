@@ -179,6 +179,7 @@ def AMCOs(Jn, Jpnp, Kn, Kpnp, Mn, Mpnp, K, Q, S):
     Given the J, K, M, for the row/col and KQS, returns the amco value
 
     """
+
     line0 = ((2 * K + 1) / (8 * math.pi ** 2)) * math.sqrt((2 * Jn + 1) * (2 * Jpnp + 1))
     line0 *= pow(-1, abs(Mn - Kn))  # -1^-1 is the same as -1^1
     line1 = wigner_3j(Jn, Jpnp, K, -Mn, Mpnp, Q) * wigner_3j(Jn, Jpnp, K, -Kn, Kpnp, S)
@@ -208,7 +209,7 @@ def full_amco(J_0, K, Q, S, vector_parts):
     num_unique_indices = 0
 
     # for every J_possibility, there are 2j+1 Ks that go with it.
-    J_possibilities = [j for j in [J_0 - 1, J_0, J_0 + 1] if j >= 0]
+    J_possibilities = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]     # By wigner rules, J = +- J_0
     for j in J_possibilities:
         num_unique_indices += 2 * j + 1
 
@@ -223,6 +224,7 @@ def full_amco(J_0, K, Q, S, vector_parts):
 
             # Append AMCO to the amco_list
             amcos.append(AMCOs(J, Jp, k, kp, M_0, M_0, K, Q, S))
+
 
         amco_list.append(amcos)
 
@@ -265,7 +267,7 @@ def psi(T2_eigenvectors_in_BO, T2_BO_eigenvalues, states, B, J_0, M_0):
     """
 
     # what J values are possible, given J_0
-    J_possibilities = [j for j in [J_0 - 1, J_0, J_0 + 1] if j >= 0]
+    J_possibilities = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]    # By wigner rules, J = +- J_0
 
     psi = np.array([])
     psi_t_vector_parts = []
@@ -286,7 +288,7 @@ def psi(T2_eigenvectors_in_BO, T2_BO_eigenvalues, states, B, J_0, M_0):
 
                     psi = np.append(psi, a(states[i][3], J, J_0, M_0, K) * ground_state_component)
 
-                    print(J, K)
+                    # print(J, K)
 
                     info = Vector_Part(J, K, states[i][:3], states[i][3], En)
                     # print(info)
@@ -294,10 +296,15 @@ def psi(T2_eigenvectors_in_BO, T2_BO_eigenvalues, states, B, J_0, M_0):
 
     psi /= np.sqrt(np.conj(psi).dot(psi))  # normalize
 
+
     return psi, np.array(psi_t_vector_parts)
 
 
-def a(elec_state, J, Jin, M=0, K=2):
+def a(elec_state, J, Jin, M, k):
+
+    if J not in [Jin - 1, Jin + 1]:
+        return 0
+
     mux, muy, muz = 0, 0, 0
 
     if elec_state == "X":
@@ -317,11 +324,14 @@ def a(elec_state, J, Jin, M=0, K=2):
     j = 0
     A = 0
 
+
+
     for q in [-1, 0, 1]:
         j += 1
         for Kin in range(-Jin, Jin + 1):
+
             term = ((-1) ** (Kin - M + q) * np.sqrt((2 * J + 1) * (2 * Jin + 1)) *
-                  wigner_3j(Jin, 1, J, -Kin, -q, K) * wigner_3j(Jin, 1, J, -M, 0, M) * mu[j - 1])
+                  wigner_3j(Jin, 1, J, -Kin, -q, k) * wigner_3j(Jin, 1, J, -M, 0, M) * mu[j - 1])
 
             A += term
 
@@ -344,7 +354,7 @@ M_0 = 0
 B = 2.603010273176e-7  #1.71270 Ghz to eV then to AU
 
 Kt = 0.1
-q = 3  # any less than 2 gets wonky
+q = 10  # any less than 2 gets wonky
 
 print(f"-------- q = {q} --------")
 

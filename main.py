@@ -24,7 +24,9 @@ def madm(t, psi_0, constant, elec1, elec2, amco_list):
     # for the correct electronic pair, calculate that MADM for this time 't'
     MADM = np.outer(np.conj(elec_dict[elec2]), elec_dict[elec1]) * np.array(amco_list)
 
-    return MADM.flatten()   # np.where(np.real(np.round(MADM, 7))==0, np.nan, np.real(np.round(MADM, 7)))
+
+    return MADM.flatten()   # np.where(np.real(np.round(MADM, 10))==0, np.nan, np.real(np.round(MADM, 10)))
+
 
 
 def full_matrix_madm_over_time(q, J_0, K, Q, S, elec1, elec2, Kt=Kt,
@@ -49,8 +51,8 @@ def full_matrix_madm_over_time(q, J_0, K, Q, S, elec1, elec2, Kt=Kt,
     # get the order of Js and Ks
     reduced_vector_parts = psi_vector_parts[:len(psi_vector_parts) // len(indices_of_good_eigenvalues)]
 
-    for x in reduced_vector_parts:
-        print(x)
+    # for x in reduced_vector_parts:
+        # print(x)
 
 
 
@@ -78,11 +80,11 @@ t_values = np.linspace(start, end, num_steps)
 K = 2
 Q = 0
 S = 0
-J_0 = 1
+J_0 = 0
 
 
 elec1 = "X"
-elec2 = "Y"
+elec2 = "X"
 
 
 # get madm info for plotting
@@ -107,6 +109,8 @@ def plot_fun_stuff(plotting):
     # Plot the traced result and the off-diagonal ones separately
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
 
+    x = 0
+
     for i, element in enumerate(plotting):
         # print(i, "plotted of", len(plotting))
         # keep the diagonal one separate for comparison
@@ -115,7 +119,7 @@ def plot_fun_stuff(plotting):
 
         # off diagonal elements in vibration. beware, higher quanta means this plot gets messy quickly
         else:
-            condition = abs(np.min(element) - np.max(element)) > 1e-8
+            condition = abs(np.min(element) - np.max(element)) > 1e-6
             if condition:
                 ax1.plot(t_values * time_conversion, element, linewidth=0.5)
 
@@ -133,7 +137,7 @@ def plot_fun_stuff(plotting):
 
 
 
-plot_fun_stuff(real)
+# plot_fun_stuff(real)
 # plot_fun_stuff(imag)
 
 
