@@ -1,5 +1,3 @@
-import numpy as np
-
 from functions import *
 from Lanczos_functions import *
 import matplotlib.pyplot as plt

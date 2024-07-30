@@ -1,4 +1,4 @@
-from functions import *
+from v2_functions import *
 import matplotlib.pyplot as plt
 from time import time
 

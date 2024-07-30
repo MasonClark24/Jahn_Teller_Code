@@ -6,6 +6,10 @@ import math
 import numpy.linalg as la
 from scipy.linalg import eigh_tridiagonal, inv
 from wigners import wigner_3j
+import itertools
+import matplotlib.pyplot as plt
+
+
 
 
 class Vector_Part:
@@ -302,9 +306,6 @@ def psi(T2_eigenvectors_in_BO, T2_BO_eigenvalues, states, B, J_0, M_0):
 
 def a(elec_state, J, Jin, M, k):
 
-    if J not in [Jin - 1, Jin + 1]:
-        return 0
-
     mux, muy, muz = 0, 0, 0
 
     if elec_state == "X":
@@ -321,28 +322,58 @@ def a(elec_state, J, Jin, M, k):
     mu[1] = muz
     mu[2] = (-1 / np.sqrt(2)) * (mux + 1j * muy)
 
-    j = 0
     A = 0
 
-
-
-    for q in [-1, 0, 1]:
-        j += 1
+    for MU, q in zip(mu, [-1, 0, 1]):
         for Kin in range(-Jin, Jin + 1):
 
+            # wigner 3j condition
+            if -Kin + -q + k != 0:
+                continue
+
             term = ((-1) ** (Kin - M + q) * np.sqrt((2 * J + 1) * (2 * Jin + 1)) *
-                  wigner_3j(Jin, 1, J, -Kin, -q, k) * wigner_3j(Jin, 1, J, -M, 0, M) * mu[j - 1])
+                  wigner_3j(Jin, 1, J, -Kin, -q, k) * wigner_3j(Jin, 1, J, -M, 0, M) * MU)
 
             A += term
 
     return A
 
 
+def nonzero_madm(J_0, J, Jp, k, kp, K, S):
+    """
+    Given J_0, J, Jp, k, kp, K, S:
+    - excitation amplitude from J_0 into J, k is zero if J isn't J_0 +- 1
+    - AMCOs are zero if J + Jp + K is odd
+    - abs(J - K) <= Jp <= J + K
+    - kp - k != S
+
+    Nonzero MADMs are worth exploring, and given information about angular momentum,
+    this returns whether the wigner 3j matrices are nonzero and this index (J, J', k, k')
+    is worth calculating
+    """
+    valid_Js = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]
+
+    # Q must also be zero
+
+    if J not in valid_Js or Jp not in valid_Js:
+        return False
+
+    if (J + Jp + K) % 2 != 0:
+        return False
+
+    if not abs(J - K) <= Jp <= J + K:
+        return False
+
+    if kp - k != S:
+        return False
+
+    return True
+
+
 def find_diagonal_indices(n):
     flattened_indices = np.arange(n ** 2)
     diagonal_indices = flattened_indices[::n + 1]
     return diagonal_indices
-
 
 def E_jkm(B, J):
     return B * J * (J + 1)

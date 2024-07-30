@@ -1,36 +1,11 @@
 import matplotlib.pyplot as plt
 from time import time
-from functions import *
+from nonzero_madm_functions import *
 import itertools
 
 """
-To do:
-Gaussian to filter around specific energy
+Massive improvement by considering what wigner 3j symbols are zero for J, k, J', k'
 """
-
-
-def nonzero_madm(J_0, J, Jp, k, kp, K, S):
-    #valid_Js = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]
-
-    #if AMCOs(J, Jp, k, kp, M_0, M_0, K, 0, S) != 0 and a('X', J, J_0, M_0, k) != 0 and a('X', Jp, J_0, M_0, kp) != 0:
-    #print(J_0, J, Jp, k, kp, K, S, "section 1")
-
-    #if J not in valid_Js or Jp not in valid_Js:
-    #return False
-
-    if (J + Jp + K) % 2 != 0:
-        return False
-
-    if not abs(J - K) <= Jp <= J + K:
-        return False
-
-    if kp - k != S:
-        return False
-
-    #print(J_0, J, Jp, k, kp, K, S, " section 2")
-    #print()
-    return True
-
 
 start = 0 / time_conversion  # convert from fs to AU
 end = 50 / time_conversion  # convert from fs to AU
@@ -46,53 +21,11 @@ J_0 = 0
 elec1 = "X"
 elec2 = "Y"
 
-madms = []
+madms_coherences = []
+on_diagonal_madms = []
 
-
-# Function to generate (J, k) permutations
-def generate_permutations(J_0):
-    J_values = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]
-    return [(J, k) for J in J_values for k in range(-J, J + 1)]
-
-
-# Generate all (J, k) pairs
-permutations = generate_permutations(J_0)
-
-# Generate all combinations of these pairs taken 2 at a time
-combined_permutations = itertools.product(permutations, repeat=2)
-
-# Filter based on nonzero_madm condition
-permutations_of_perms = [
-    [J, k, Jp, kp] for (J, k), (Jp, kp) in combined_permutations
-    if nonzero_madm(J_0, J, Jp, k, kp, 2, 0)
-]
-
-
-def psi_norm(T2_eigenvectors_in_BO, states, J_0, M_0):
-    """
-    return normalization constant for psi
-    """
-
-    # what J values are possible, given J_0
-    J_possibilities = [j for j in [J_0 - 1, J_0 + 1] if j >= 0]  # By wigner rules, J = +- J_0
-
-    psi = []
-
-    # find psi (without the e^it term) and each Born-Oppenheimer state's information
-    for i, vector in enumerate(T2_eigenvectors_in_BO):
-        psi_n = []
-
-        for i, ground_state_component in enumerate(vector):
-            for J in J_possibilities:
-                for K in range(-J, J + 1):
-                    psi_n = np.append(psi_n, a(states[i][3], J, J_0, M_0, K) * ground_state_component)
-
-        psi.append(psi_n)
-
-    psi_0 = np.sum(np.array(psi), axis=0)
-
-    return np.sqrt(np.conj(psi_0).dot(psi_0))
-
+# find the angular momentum pairs that are nonzero (ie. worth calculating)
+nonzero_pairs = find_nonzero_angular_momentum_MADM_pairs(J_0, K, S)
 
 # Get possible quantum states
 states = get_possible_states(q)
@@ -103,66 +36,58 @@ hamiltonian = np.array([[matrix_elem(state1, state2).real for state2 in states] 
 # Get eigenvectors and eigenvalues
 T2_eigenvectors_in_BO, T2_BO_eigenvalues = eigenvector_and_eigenvalues(hamiltonian, Kt, indices_of_good_eigenvalues)
 
+# full vector includes the excitation amplitude into J and k, and this affects the normalization constant
+# however, the full PSI_0 isn't needed, as we only need to explore specific J, k, J', k' pairs, so just get the constant
+# note: psi may already be normalized with the math of the excitation constants
 psi_norm = psi_norm(T2_eigenvectors_in_BO, states, J_0, M_0)
 
-for nonzero_term in permutations_of_perms:
+
+# for every nonzero pair of states, calculate that MADM over time
+for nonzero_term in nonzero_pairs:
     J, k, Jp, kp = nonzero_term[0], nonzero_term[1], nonzero_term[2], nonzero_term[3]
 
-    amco = AMCOs(J, Jp, k, kp, M_0, M_0, K, Q, S)
+    madms_nonzero = MADM_for_angular_pairs(J, k, Jp, kp, T2_eigenvectors_in_BO, T2_BO_eigenvalues, elec1, elec2, M_0, J_0, K, Q, S)
 
-    exp_1 = np.array([np.exp(-1j * (energy + E_jkm(B, J))) for energy in T2_BO_eigenvalues])
-    exp_2 = np.array([np.exp(-1j * (energy + E_jkm(B, Jp))) for energy in T2_BO_eigenvalues])
+    if J == Jp and k == kp:
+        diagonal_indices = find_diagonal_indices(int(np.sqrt(len(madms_nonzero))))
 
-    # Create a dictionary with keys for the 'X', 'Y', and 'Z' electronic components
-    elec_dict = {"X": 0,
-                 "Y": 1,
-                 "Z": 2}
+        # Create a boolean mask to exclude diagonal indices
+        exclude_mask = np.ones(len(madms_nonzero), dtype=bool)
+        exclude_mask[diagonal_indices] = False
 
-    electronically_seperated = [np.array_split(np.array(v), 3) for v in
-                                T2_eigenvectors_in_BO / len(T2_eigenvectors_in_BO)]
+        # Extract elements that are not diagonal
+        coherences = madms_nonzero[exclude_mask]
 
-    x = a(elec1, J, J_0, M_0, k) * np.array(
-        [vector[elec_dict[elec1]] for vector in electronically_seperated]) / psi_norm
-    xp = a(elec2, Jp, J_0, M_0, kp) * np.array(
-        [vector[elec_dict[elec2]] for vector in electronically_seperated]) / psi_norm
+        # extract elements that are diagonal
+        on_diagonal = madms_nonzero[diagonal_indices]
 
+        for elem in coherences:
+            madms_coherences.append(elem)
 
-    def madm(amco, x, xp, exp_1, exp_2, t):
-        exponent_1 = np.power(exp_1, t)
-        term1 = np.sum([vector * constant for vector, constant in zip(x, exponent_1)], axis=0)
-
-        exponent_2 = np.power(exp_2, t)
-        term2 = np.sum([vector * constant for vector, constant in zip(xp, exponent_2)], axis=0)
-
-        return amco * np.outer(np.conj(term2), term1).flatten()
+        for elem in on_diagonal:
+            on_diagonal_madms.append(elem)
+    else:
+        for elem in madms_nonzero:
+            madms_coherences.append(elem)
 
 
-    results = np.array([madm(amco, x, xp, exp_1, exp_2, t) for t in t_values]).T
+print(f"Time to execute: {round(time() - t0, 2)}s for {len(madms_coherences)+len(on_diagonal_madms)} MADM elements")
+print("Coherences:", len(madms_coherences))
+print("On-Diagonal:", len(on_diagonal_madms))
 
-    for ans in results:
-        madms.append(ans)
+real = np.real(madms_coherences)
+real_diag = np.real(on_diagonal_madms)
+trace = np.sum(real_diag, axis=0)
 
-print(f"Time to execute: {round(time() - t0, 2)}s for {len(madms)} MADM elements")
+# if something doesn't change at 1/Nth of the highest changing one, don't plot it b/c it hardly changes with time
+tol = 0
+for r in real:
+    diff = abs(np.max(r) - np.min(r))
+    if diff > tol:
+        tol = diff
 
-real = np.real(madms)
-imag = np.imag(madms)
+tol /= 2
 
-
-def plot_fun_stuff(plotting):
-    # Plot the traced result and the off-diagonal ones separately
-    fig, (ax1) = plt.subplots(1, 1, figsize=(8, 6))
-
-    for i, element in enumerate(plotting):
-        condition = abs(np.min(element) - np.max(element)) > 1e-9
-        if condition:
-            ax1.plot(t_values * time_conversion, element, linewidth=0.5)
-
-    ax1.set_title(f"{elec1}{elec2} Full MADM K=2 with time, quanta={q}")
-    ax1.set_ylabel('Value')
-
-    plt.tight_layout()
-    plt.show()
-
-
-plot_fun_stuff(real)
-# plot_fun_stuff(imag)
+print(f"tolerance = {tol}")
+plot_fun_stuff(t_values, real, trace, tol, elec1, elec2, K, Q, S, trace=True, do_tolerance=True)
+# plot_fun_stuff(t_values, plotting, on_diagonal_madms, tol, elec1, elec2, K, Q, S)
