@@ -1,9 +1,5 @@
 from time import time
-
-import numpy as np
-
 from nonzero_madm_functions import *
-
 
 # Time range and steps
 start = 0 / time_conversion  # convert from fs to AU
@@ -18,7 +14,7 @@ print(f"-------- q = {q} --------")
 K = 2
 Q = 0
 S = 0
-J_0 = 0
+J_0 = 1
 
 # Electronic states
 elec1 = "X"
@@ -28,6 +24,9 @@ elec2 = "Y"
 madms_coherences = []
 on_diagonal_madms = []
 
+timing_data = {}
+t0 = time()     # total timer
+
 # Find nonzero angular momentum pairs
 nonzero_pairs = find_nonzero_angular_momentum_MADM_pairs(J_0, K, S)
 
@@ -35,18 +34,23 @@ nonzero_pairs = find_nonzero_angular_momentum_MADM_pairs(J_0, K, S)
 states = get_possible_states(q)
 
 # Calculate Hamiltonian matrix
+start_time = time()
 hamiltonian = build_hamiltonian(states)
+timing_data['Make Hamiltonian'] = time() - start_time
 
 # Get eigenvectors and eigenvalues
+start_time = time()
 T2_eigenvectors_in_BO, T2_BO_eigenvalues = eigenvector_and_eigenvalues(hamiltonian, Kt, indices_of_good_eigenvalues)
+timing_data['Eigenvectors/values'] = time() - start_time
 
 # Calculate normalization constant for the wavefunction (may already be normalized)
+start_time = time()
 psi_norm_constant = psi_norm(T2_eigenvectors_in_BO, states, J_0, M_0)
-
-# Start timer
-t0 = time()
+print(f"normalization constant: {psi_norm_constant}")
+timing_data['Normalization'] = time() - start_time
 
 # Calculate MADM for each nonzero angular momentum pair
+start_time = time()
 for nonzero_term in nonzero_pairs:
     J, k, Jp, kp = nonzero_term
 
@@ -73,25 +77,16 @@ for nonzero_term in nonzero_pairs:
     else:
         madms_coherences.extend(madms_nonzero)
 
-# Print execution time and number of MADM elements
-print(f"Time to execute: {round(time() - t0, 4)}s for {len(madms_coherences) + len(on_diagonal_madms)} MADM elements")
-print("Coherences:", len(madms_coherences))
-print("On-Diagonal:", len(on_diagonal_madms))
 
-# Convert MADM elements to real parts
-real = np.real(madms_coherences)
-real_diag = np.real(on_diagonal_madms)
-trace = np.sum(real_diag, axis=0)
+timing_data[f'All {len(madms_coherences) + len(on_diagonal_madms)} MADMs over {num_steps} steps'] = time() - start_time
 
-# Determine tolerance for plotting
-tol = 0
-for r in real:
-    diff = abs(np.max(r) - np.min(r))
-    if diff > tol:
-        tol = diff
+full_time = time() - t0
 
-tol /= 2
-print(f"Tolerance = {tol}")
-
-# Plot results
-plot_fun_stuff(t_values, real, trace, tol, elec1, elec2, K, Q, S, q, trace=True, do_tolerance=True)
+# Create pie chart with timing information
+labels = [f"{key}: {value:.2f}s ({(value / full_time) * 100:.1f}%)" for key, value in timing_data.items()]
+times = list(timing_data.values())
+plt.figure(figsize=(10, 7))
+plt.pie(times, labels=labels, autopct='%1.1f%%', startangle=140)
+plt.axis('equal')
+plt.title(f'Time taken by different parts of the function q={q}, J_0={J_0}, ({round(full_time,1)}s)')
+plt.show()

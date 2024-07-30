@@ -38,7 +38,7 @@ def generate_permutations(J_0):
 K = 2
 Q = 0
 S = 0
-J_0 = 8
+J_0 = 20
 elec1 = "X"
 elec2 = "X"
 

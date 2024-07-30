@@ -99,6 +99,61 @@ def matrix_elem(state1, state2):
         return 0
 
 
+def build_hamiltonian(states):
+    hamil = np.zeros((len(states), len(states)))
+    for i, s in enumerate(states):
+        hamil[i][i] = int(s[0]) + int(s[1]) + int(s[2]) + 1.5
+
+    for i in range(3):
+
+        for index, state in enumerate(states):
+            electronic1 = state[3]
+            electronic2 = None
+
+            if electronic1 == 'X' and i == 0:
+                continue
+            elif electronic1 == 'Y' and i == 1:
+                continue
+            elif electronic1 == 'Z' and i == 2:
+                continue
+            elif electronic1 == 'X' and i == 2:
+                electronic2 = 'Y'
+            elif electronic1 == 'Y' and i == 0:
+                electronic2 = 'Z'
+            elif electronic1 == 'Z' and i == 1:
+                electronic2 = 'X'
+            else:
+                continue
+
+            high_state = state.copy()
+            high_state[i] += 1
+            high_state[3] = electronic2
+
+
+            try:
+                other_state_index = states.index(high_state)
+                hamil[index][other_state_index] = np.real(sqrt(high_state[i]) / sqrt(2))
+                hamil[other_state_index][index] = np.real(sqrt(high_state[i]) / sqrt(2))
+
+            except ValueError:
+                pass
+
+            low_state = state.copy()
+            low_state[i] -= 1
+            low_state[3] = electronic2
+
+            try:
+                other_state_index = states.index(low_state)
+                hamil[index][other_state_index] = np.real(sqrt(state[i]) / sqrt(2))
+                hamil[other_state_index][index] = np.real(sqrt(state[i]) / sqrt(2))
+            except ValueError:
+                pass
+
+    return hamil
+
+
+
+
 def compute_eigenvalues_and_vectors_eigh(Matrix, Kt):
     """
     Compute eigenvalues and eigenvectors for a given Kt.
@@ -290,7 +345,7 @@ def find_diagonal_indices(n):
     return diagonal_indices
 
 
-def plot_fun_stuff(t_values, plotting, on_diagonal_madms, tol, elec1, elec2, K, Q, S, trace, do_tolerance):
+def plot_fun_stuff(t_values, plotting, on_diagonal_madms, tol, elec1, elec2, K, Q, S, q, trace, do_tolerance):
     """
     Plots term of regular and specifically on_diagonal cases
 
@@ -329,7 +384,7 @@ def plot_fun_stuff(t_values, plotting, on_diagonal_madms, tol, elec1, elec2, K, 
     plt.show()
 
 
-def MADM_for_angular_pairs(J, k, Jp, kp, T2_eigenvectors_in_BO, T2_BO_eigenvalues, elec1, elec2, M_0, J_0, K, Q, S):
+def MADM_for_angular_pairs(J, k, Jp, kp, T2_eigenvectors_in_BO, T2_BO_eigenvalues, elec1, elec2, M_0, J_0, K, Q, S, t_values, norm):
     amco = AMCOs(J, Jp, k, kp, M_0, M_0, K, Q, S)
 
     # holds superposition of energy states for ease of calculation
@@ -345,9 +400,9 @@ def MADM_for_angular_pairs(J, k, Jp, kp, T2_eigenvectors_in_BO, T2_BO_eigenvalue
 
     # create the appropriate PSI portion with excitation amplitudes
     x = a(elec1, J, J_0, M_0, k) * np.array(
-        [vector[elec_dict[elec1]] for vector in electronically_seperated]) / psi_norm
+        [vector[elec_dict[elec1]] for vector in electronically_seperated]) / norm
     xp = a(elec2, Jp, J_0, M_0, kp) * np.array(
-        [vector[elec_dict[elec2]] for vector in electronically_seperated]) / psi_norm
+        [vector[elec_dict[elec2]] for vector in electronically_seperated]) / norm
 
     def madm(amco, x, xp, exp_1, exp_2, t):
         exponent_1 = np.power(exp_1, t)  # (e^-iE)^t = e^-iE^t
@@ -377,9 +432,6 @@ M_0 = 0
 B = 2.603010273176e-7  #1.71270 Ghz to eV then to AU
 
 Kt = 0.1
-q = 10  # any less than 2 gets wonky
-
-print(f"-------- q = {q} --------")
 
 # indices_of_good_eigenvalues = [4, 5, 6, 15, 16, 17, 24, 25, 26]  # indices of the first 9 T2 values (3 triply degen)
 indices_of_good_eigenvalues = [4, 15, 24]
