@@ -9,6 +9,18 @@ from wigners import wigner_3j
 import itertools
 import matplotlib.pyplot as plt
 
+def gaussian(E):
+    # bad, but placeholder
+    numerator = 0.44 * np.pi
+    denominator = 4.13567e-15 / (60e-15)
+    center = 9.33
+
+    temporary_center = 0
+
+    # Define the function
+    print(E, np.exp(-((numerator / denominator) * (E*27.211396 - temporary_center)) ** 2))
+    return np.exp(-((numerator / denominator) * (E*27.211396 - temporary_center)) ** 2)
+
 
 def get_possible_states(quanta):
     """
@@ -200,7 +212,7 @@ def eigenvector_and_eigenvalues(hamiltonian, Kt, eigenvectors_I_want):
     T2_BO_eigenvalues = []
 
     for i in eigenvectors_I_want:
-        T2_eigenvectors_in_BO.append(eigenvectors[i])
+        T2_eigenvectors_in_BO.append(eigenvectors[i] * gaussian(eigenvalues[i]))   # add gaussian bandwidth
         T2_BO_eigenvalues.append(eigenvalues[i])
 
     return np.array(T2_eigenvectors_in_BO), np.array(T2_BO_eigenvalues)
@@ -377,8 +389,10 @@ def plot_fun_stuff(t_values, plotting, on_diagonal_madms, tol, elec1, elec2, K, 
     ax1.set_title(f"{elec1}{elec2} Coherences")
     ax1.set_ylabel('Value')
 
-    ax2.set_title(f"{elec1}{elec2} On-Diagonal (Same rot & vibration), Trace={trace}")
+    ax2.set_title(f"{elec1}{elec2} On-Diagonal (Same vibration), Trace={trace}")
     ax2.set_ylabel('Value')
+    ax2.set_xlabel('fs')
+
 
     plt.tight_layout()
     plt.show()
@@ -401,12 +415,14 @@ def MADM_for_angular_pairs(J, k, Jp, kp, T2_eigenvectors_in_BO, T2_BO_eigenvalue
     # create the appropriate PSI portion with excitation amplitudes
     x = a(elec1, J, J_0, M_0, k) * np.array(
         [vector[elec_dict[elec1]] for vector in electronically_seperated]) / norm
+
     xp = a(elec2, Jp, J_0, M_0, kp) * np.array(
         [vector[elec_dict[elec2]] for vector in electronically_seperated]) / norm
 
     def madm(amco, x, xp, exp_1, exp_2, t):
         exponent_1 = np.power(exp_1, t)  # (e^-iE)^t = e^-iE^t
         psi_t = np.sum([vector * constant for vector, constant in zip(x, exponent_1)], axis=0)
+
 
         exponent_2 = np.power(exp_2, t)
         psi_prime_t = np.sum([vector * constant for vector, constant in zip(xp, exponent_2)], axis=0)
@@ -434,5 +450,6 @@ B = 2.603010273176e-7  #1.71270 Ghz to eV then to AU
 Kt = 0.1
 
 # indices_of_good_eigenvalues = [4, 5, 6, 15, 16, 17, 24, 25, 26]  # indices of the first 9 T2 values (3 triply degen)
+# indices_of_good_eigenvalues = [4, 15, 24, 30, 31, 32]
 indices_of_good_eigenvalues = [4, 15, 24]
 # indices_of_good_eigenvalues = [4]  # indices of the first 9 T2 values (3 triply degen)

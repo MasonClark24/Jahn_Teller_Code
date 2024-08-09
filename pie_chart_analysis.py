@@ -8,13 +8,13 @@ num_steps = 50
 t_values = np.linspace(start, end, num_steps)
 
 # Constants
-q = 10  # any less than 2 gets wonky
+q = 30  # any less than 2 gets wonky
 print(f"-------- q = {q} --------")
 
 K = 2
 Q = 0
 S = 0
-J_0 = 1
+J_0 = 0
 
 # Electronic states
 elec1 = "X"
